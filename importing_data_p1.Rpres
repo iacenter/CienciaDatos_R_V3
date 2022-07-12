@@ -1,0 +1,452 @@
+Importing data
+========================================================
+author:Alán Ponce
+date: `r Sys.Date()` 
+autosize: true 
+
+
+<div align="center">
+<img src="imgs/ia_center.jpeg" width=700 height=600>
+</div>
+
+
+```{r, echo = FALSE}
+
+rm(list=ls())
+
+# install.packages(c("tidyverse", "gapminder", "data.table", "vroom", 
+#                    "readxl", "gdata", "XLConnect"))
+
+#-- Load a library
+library(tidyverse)
+library(gapminder)
+library(data.table)
+library(vroom)
+library(readxl)
+library(gdata)
+library(XLConnect)
+
+
+
+```
+
+Agenda
+========================================================
+type: section
+
+- Quick recap
+  - R Data Structures
+  - Tidyyverse
+- Importing data
+  - read.csv
+  - read.delim
+  - read.table
+  - read_csv
+  - fread
+  - Excel files
+  - Import flat files from the web
+  - JavaScript Object Notation (JSON)
+- Conclusions
+- Q&A
+
+Quick recap
+========================================================
+type: section
+<div align="center">
+<img src="imgs/ds_R.png" width=700 height=500>
+</div>
+
+<!-- ![title](imgs/ds_R.png) -->
+
+Tidyverse
+========================================================
+type: section
+
+- The pipe operator %>% 
+- Filter
+- Arrange
+- Mutate 
+- summarize
+  - mean
+  - sum
+  - median
+  - min
+  - max
+- Group by (group_by)
+- ggplot2
+  
+Quick recap: Code
+======================================================== 
+
+```{r}
+
+gapminder %>%
+    group_by(year, continent) %>% 
+    summarize(totalPop = sum(pop),
+    meanLifeExp = mean(lifeExp))
+
+```
+
+Quick recap: Viz
+======================================================== 
+
+```{r, echo = FALSE}
+
+gapminder_2007 <- gapminder %>% filter(year == 2007)
+
+ggplot(gapminder_2007, 
+       aes(x = gdpPercap, y = lifeExp, color = continent, size = pop)) + 
+          geom_point() + scale_x_log10() +
+            facet_wrap(~ continent)
+
+```
+
+
+Importing data:
+========================================================
+type: section
+
+- read.csv
+- read.delim
+- read.table
+- read_csv
+- fread
+- vroom
+
+
+
+read.csv
+========================================================
+
+- The utils package, which is automatically loaded in your R session on startup, can import CSV files with the read.csv() function.
+
+```{r}
+# Import swimming_pools.csv: pools
+pools <- read.csv("data/swimming_pools.csv")
+
+# Print the structure of pools
+str(pools)
+
+```
+
+read.csv
+========================================================
+
+- With **stringsAsFactors**, you can tell R whether it should convert strings in the flat file to factors.
+
+- For all importing functions in the utils package, this argument is TRUE, which means that you import strings as factors. This only makes sense if the strings you import represent categorical variables in R. If you set stringsAsFactors to FALSE, the data frame columns corresponding to strings in your text file will be character.
+
+```{r}
+
+# Import gapminder data
+data("gapminder")
+
+str(gapminder)
+
+```
+
+read.csv
+========================================================
+
+- The utils package, which is automatically loaded in your R session on startup, can import CSV files with the read.csv() function.
+
+
+```{r}
+
+gapminder_2 <- read.csv("data/gapminder_2.csv", stringsAsFactors = FALSE)
+
+# Check the structure of pools
+str(gapminder_2)
+
+```
+
+read.delim
+========================================================
+
+- Aside from .csv files, there are also the .txt files which are basically text files. You can import these functions with read.delim(). 
+
+- By default, it sets the sep argument to "\t" (fields in a record are delimited by tabs) and the header argument to TRUE (the first row contains the field names).
+
+
+```{r}
+
+# Import hotdogs.txt: hotdogs
+hotdogs <- read.delim("data/hotdogs.txt", header = FALSE)
+#hotdogs
+
+# Summarize hotdogs
+str(hotdogs)
+
+
+```
+
+
+read.delim
+========================================================
+
+- By default, it sets the sep argument to "\t" (fields in a record are delimited by tabs) and the header argument to TRUE (the first row contains the field names).
+
+
+```{r}
+
+# Import hotdogs.txt: hotdogs
+hotdogs <- read.delim("data/hotdogs.txt",  sep = "\t", 
+                      col.names = c("type", "calories", "sodium"))
+
+# Call head() on hotdogs
+head(hotdogs)
+
+```
+
+read.table
+========================================================
+
+- It's the most basic importing function; you can specify tons of different arguments in this function.
+
+```{r}
+
+# Path to the hotdogs.txt file: path
+path <- file.path("data", "hotdogs.txt")
+
+# Import the hotdogs.txt file: hotdogs
+hotdogs <- read.table(path, 
+                      sep = "\t", 
+                      col.names = c("type", "calories", "sodium"))
+
+# Call head() on hotdogs
+head(hotdogs)
+
+```
+
+Column classes
+========================================================
+
+- You can also specify the column types or column classes of the resulting data frame
+
+```{r}
+
+
+# Edit the colClasses argument to import the data correctly: hotdogs2
+hotdogs2 <- read.delim("data/hotdogs.txt", 
+                       header = FALSE, 
+                       col.names = c("type", "calories", "sodium"),
+                       colClasses = c("factor", "NULL", "numeric")
+                       )
+
+# Display structure of hotdogs2
+str(hotdogs2)
+
+```
+
+read_csv
+========================================================
+type: section
+
+read_csv
+========================================================
+
+- CSV files can be imported with read_csv(). It's a wrapper function around read_delim() that handles all the details for you.
+
+```{r}
+
+# Load the readr package
+#library(readr)
+
+# Import potatoes.csv with read_csv(): potatoes
+potatoes <- read_csv("data/potatoes.csv")
+
+head(potatoes)
+
+```
+
+read_tsv
+========================================================
+
+- Where you use read_csv() to easily read in CSV files, you use read_tsv() to easily read in TSV files. TSV is short for tab-separated values.
+
+```{r}
+
+# Column names
+properties <- c("area", "temp", "size", "storage", "method",
+                "texture", "flavor", "moistness")
+
+# Import potatoes.txt: potatoes
+potatoes <- read_tsv("data/potatoes.txt", col_names = properties) %>% 
+  glimpse() %>% 
+  View()
+
+# Call head() on potatoes
+head(potatoes)
+
+
+```
+
+read_tsv
+========================================================
+
+- You'll again be working potatoes.txt; the file uses tabs ("\t") to delimit values and does not contain column names in its first line.
+
+```{r}
+
+# Column names
+properties <- c("area", "temp", "size", "storage", "method",
+                "texture", "flavor", "moistness")
+
+# Import potatoes.txt using read_delim(): potatoes
+potatoes <- read_delim("data/potatoes2.txt", 
+                       delim = "\t", 
+                       col_names = properties) %>% glimpse() 
+
+# Print out potatoes
+potatoes
+
+
+```
+
+skip and n_max
+========================================================
+
+Through skip and n_max you can control which part of your flat file you're actually importing into R.
+
+- skip specifies the number of lines you're ignoring in the flat file before actually starting to import data.
+
+- n_max specifies the number of lines you're actually importing.
+
+```{r}
+
+# Column names
+properties <- c("area", "temp", "size", "storage", "method",
+                "texture", "flavor", "moistness")
+
+# Import 5 observations from potatoes.txt: potatoes_fragment
+potatoes_fragment <- read_tsv("data/potatoes.txt", 
+                              skip = 6, n_max = 15, 
+                              col_names = properties) 
+
+#potatoes_fragment <- read_tsv("data/potatoes.txt", skip = 6, n_max = 5)
+
+head(potatoes_fragment)
+
+
+```
+
+
+col_types
+========================================================
+
+- You can also specify which types the columns in your imported data frame should have
+
+```{r}
+
+# Column names
+properties <- c("area", "temp", "size", "storage", "method",
+                "texture", "flavor", "moistness")
+
+# Import all data, but force all columns to be character: potatoes_char
+potatoes_char <- read_tsv("data/potatoes2.txt", 
+                          col_types = "cccccccc", 
+                          col_names = properties) %>% glimpse()
+
+# Print out structure of potatoes_char
+str(potatoes_char)
+
+
+```
+
+col_types with collectors:
+========================================================
+
+- Another way of setting the types of the imported columns is using collectors. 
+
+- Collector functions can be passed in a list() to the col_types argument of read_ functions to tell them how to interpret values in a column.
+
+```{r}
+
+# The collectors you will need to import the data
+fac <- col_factor(levels = c("Beef", "Meat", "Poultry"))
+int <- col_integer()
+
+# Edit the col_types argument to import the data correctly: hotdogs_factor
+hotdogs_factor <- read_tsv("data/hotdogs.txt",
+                           col_names = c("type", "calories", "sodium"),
+                           col_types = list(fac, int, int)) %>% glimpse()
+
+# Display the summary of hotdogs_factor
+head(hotdogs_factor)
+
+
+```
+
+fread
+========================================================
+type: section
+
+fread
+========================================================
+
+- Fast and friendly file finagler
+
+- You still remember how to use read.table(), right? Well, fread() is a function that does the same job with very similar arguments
+
+```{r}
+
+# load the data.table package
+#library(data.table)
+
+# Import potatoes.csv with fread(): potatoes
+potatoes <- fread("data/potatoes.csv")
+
+# Print out potatoes
+potatoes
+
+
+```
+
+fread
+========================================================
+
+- Now that you know the basics about fread(), you should know about two arguments of the function: drop and select, to drop or select variables of interest.
+
+```{r}
+
+# Import columns 6 and 8 of potatoes.csv: potatoes
+potatoes <- fread("data/potatoes.csv", select = c(6, 8))
+
+head(potatoes)
+
+# Plot texture (x) and moistness (y) of potatoes
+plot(potatoes$texture, potatoes$moistness)
+
+
+```
+
+vroom
+========================================================
+
+```{r}
+
+#library(vroom)
+
+potatoes <- vroom("data/potatoes.csv")
+
+```
+
+
+Conclusions
+========================================================
+type: section
+
+- read.csv
+- read.delim
+- read.table
+- read_csv
+- fread
+- vroom
+
+Q&A
+========================================================
+
+
+
+
+
