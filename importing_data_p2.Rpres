@@ -1,0 +1,661 @@
+Importing data Part 2
+========================================================
+author:Alán Ponce
+date: `r Sys.Date()` 
+autosize: true 
+
+
+<div align="center">
+<img src="imgs/ia_center.jpeg" width=700 height=600>
+</div>
+
+
+```{r, echo = FALSE}
+
+rm(list=ls())
+
+#-- Load a library
+library(tidyverse)
+library(gapminder)
+library(data.table)
+library(readxl)
+library(gdata)
+library(XLConnect)
+library(haven)
+
+```
+
+Agenda
+========================================================
+type: section
+
+- Quick recap
+  - Tidyyverse
+- Importing data
+  - read.csv
+  - read.delim
+  - read.table
+  - read_csv
+  - fread
+  - Excel files
+  - Import flat files from the web
+  - JavaScript Object Notation (JSON)
+  - INEGI API
+  - The World Bank API
+- Conclusions
+- Q&A
+
+
+Excel files
+========================================================
+type: section
+
+Excel
+========================================================
+
+- Use excel_sheets() to print out the names of the sheets in urbanpop.xlsx
+
+```{r}
+
+# Load the readxl package
+#library(readxl)
+
+# Print the names of all worksheets
+urban_pop <- excel_sheets("data/urbanpop.xlsx")
+#excel_sheets
+
+head(urban_pop)
+
+```
+
+Import an Excel sheet
+========================================================
+
+- Now that you know the names of the sheets in the Excel file you want to import, it is time to import those sheets into R. You can do this with the read_excel() function. Have a look at this recipe:
+
+- data <- read_excel("data.xlsx", sheet = "my_sheet")
+
+```{r}
+
+# Read the sheets, one by one
+pop_1 <- read_excel("data/urbanpop.xlsx", sheet = 1)
+
+head(pop_1)
+
+```
+
+Import an Excel sheet
+========================================================
+
+- Now that you know the names of the sheets in the Excel file you want to import, it is time to import those sheets into R. You can do this with the read_excel() function. Have a look at this recipe:
+
+- data <- read_excel("data.xlsx", sheet = "my_sheet")
+
+```{r}
+
+# Read the sheets, one by one
+pop_2 <- read_excel("data/urbanpop.xlsx", sheet = "1967-1974")
+
+head(pop_2)
+
+```
+
+The col_names argument
+========================================================
+
+- By default it is TRUE, denoting whether the first row in the Excel sheets contains the column names. 
+
+- By default it is TRUE, denoting whether the first row in the Excel sheets contains the column names. If this is not the case, you can set col_names to FALSE. In this case, R will choose column names for you. 
+
+- You can also choose to set col_names to a character vector with names for each column. 
+
+```{r}
+
+# Import the first Excel sheet of urbanpop_nonames.xlsx (R gives names): pop_a
+pop_a <- read_excel("data/urbanpop_nonames.xlsx", col_names = FALSE)
+
+head(pop_a)
+
+```
+
+
+The col_names argument
+========================================================
+
+- By default it is TRUE, denoting whether the first row in the Excel sheets contains the column names. 
+
+- By default it is TRUE, denoting whether the first row in the Excel sheets contains the column names. If this is not the case, you can set col_names to FALSE. In this case, R will choose column names for you. 
+
+- You can also choose to set col_names to a character vector with names for each column. 
+
+```{r}
+
+# Import the first Excel sheet of urbanpop_nonames.xlsx (specify col_names): pop_b
+cols <- c("country", paste0("year_", 1960:1966))
+
+pop_b <- read_excel("data/urbanpop_nonames.xlsx", col_names = cols)
+
+head(pop_b)
+
+```
+
+The skip argument
+========================================================
+
+Another argument that can be very useful when reading in Excel files that are less tidy, is skip. With skip, you can tell R to ignore a specified number of rows inside the Excel sheets you're trying to pull data from. 
+
+> read_excel("data.xlsx", skip = 15)
+
+In this case, the first 15 rows in the first sheet of "data.xlsx" are ignored.
+
+If the first row of this sheet contained the column names, this information will also be ignored by readxl. Make sure to set col_names to FALSE or manually specify column names in this case! 
+
+```{r}
+
+# Import the second sheet of urbanpop.xlsx, skipping the first 21 rows: urbanpop_sel
+urbanpop_sel <- read_excel("data/urbanpop.xlsx", sheet = 2, col_names = FALSE, skip = 21)
+
+head(urbanpop_sel)
+
+# Print out the first observation from urbanpop_sel
+urbanpop_sel[1,]
+
+
+```
+
+Excel (xlsx and xls)
+========================================================
+type: sub-section
+
+Import a local file
+========================================================
+
+
+```{r}
+
+# Import the second sheet of urbanpop.xls: urban_pop
+#urban_pop <- read_excel("data/urbanpop.xls", sheet = "1967-1974")
+
+urban_pop <- read.xls("data/urbanpop.xls", sheet = "1967-1974")
+
+# Print the first 11 observations using head()
+head(urban_pop)
+
+```
+
+read.xls() wraps around read.table()
+========================================================
+ - It basically comes down to two steps: converting the Excel file to a .csv file using a Perl script, and then reading that .csv file with the read.csv() function that is loaded by default in R, through the utils package.
+
+- This means that all the options that you can specify in read.csv(), can also be specified in read.xls().
+
+
+```{r}
+
+# Column names for urban_pop
+columns <- c("country", paste0("year_", 1967:1974))
+
+# Finish the read.xls call
+urban_pop <- read.xls("data/urbanpop.xls", sheet = 2,
+                      skip = 50, header = FALSE, stringsAsFactors = FALSE,
+                      col.names = columns)
+
+# Print first 10 observation of urban_pop
+head(urban_pop)
+
+```
+
+read.xls() wraps around read.table()
+========================================================
+ 
+
+```{r}
+
+# Import all sheets from urbanpop.xls
+path <- "data/urbanpop.xls"
+
+urban_sheet1 <- read.xls(path, sheet = 1, stringsAsFactors = FALSE)
+urban_sheet2 <- read.xls(path, sheet = 2, stringsAsFactors = FALSE)
+urban_sheet3 <- read.xls(path, sheet = 3, stringsAsFactors = FALSE)
+
+# Extend the cbind() call to include urban_sheet3: urban_all
+urban <- cbind(urban_sheet1, urban_sheet2[-1], urban_sheet3[-1])
+
+# Remove all rows with NAs from urban: urban_clean
+urban_clean <- na.omit(urban)
+
+# Print out a summary of urban_clean
+head(urban_clean)
+
+```
+
+Connect to a workbook
+========================================================
+ 
+ Provides comprehensive functionality to read, write and format Excel data.
+ 
+ - <https://cran.microsoft.com/snapshot/2020-04-09/web/packages/XLConnect/index.html>
+ 
+ - <https://github.com/miraisolutions/xlconnect>
+
+```{r}
+
+# Build connection to urbanpop.xlsx: my_book
+my_book <- loadWorkbook("data/urbanpop.xlsx")
+
+# Print out the class of my_book
+class(my_book)
+
+```
+
+List and read Excel sheets
+========================================================
+ 
+```{r}
+
+# List the sheets in my_book
+getSheets(my_book)
+
+
+```
+
+List and read Excel sheets
+========================================================
+ 
+```{r}
+
+# Import the second sheet in my_book
+readWorksheet(my_book, sheet = 2)
+
+```
+
+XLConnect:
+========================================================
+
+- Add worksheet
+  - createSheet()
+- Populate worksheet
+  - writeWorksheet()
+  - saveWorkbook()
+- Renaming sheets
+  - renameSheet()
+- Removing sheets
+  - removeSheet()
+  
+
+Web
+========================================================
+type: section
+
+
+Import flat files from the web
+========================================================
+ 
+```{r}
+
+# https URL to the swimming_pools csv file.
+url_csv <- "https://raw.githubusercontent.com/iacenter/CienciaDatos_R_V3/main/data/swimming_pools.csv"
+
+# Import the file using read.csv(): pools1
+pools <- read.csv(url_csv)
+
+head(pools)
+
+```
+
+Import flat files from the web
+========================================================
+ 
+```{r}
+
+# Import the csv file: pools
+url_csv <- "https://raw.githubusercontent.com/iacenter/CienciaDatos_R_V3/main/data/swimming_pools.csv"
+#url_csv
+
+pools <- read_csv(url_csv)
+
+head(pools)
+
+```
+
+Import flat files from the web
+========================================================
+ 
+```{r}
+
+# Import the txt file: potatoes
+url_delim <- "https://raw.githubusercontent.com/iacenter/CienciaDatos_R_V3/main/data/potatoes.txt"
+
+potatoes <- read_tsv(url_delim)
+
+head(potatoes)
+
+```
+
+Import flat files from the web
+========================================================
+ 
+```{r}
+
+# Specification of url: url_xls
+url_xls <- "https://raw.githubusercontent.com/iacenter/CienciaDatos_R_V3/main/data/latitude.xls"
+
+# Download file behind URL, name it local_latitude.xls
+download.file(url_xls, destfile = "data/local_latitude.xls")
+
+# Import the local .xls file with readxl: excel_readxl
+excel_readxl <- read_excel("data/local_latitude.xls")
+
+head(excel_readxl)
+
+```
+
+JavaScript Object Notation (JSON)
+========================================================
+- Advantages of JSON   
+  - Very popular data format for APIs (e.g. results from an Internet search)
+  - Human readable
+  - Each record (or document as they are called) is self contained. The equivalent of the column name and column values are in every record.
+  - Documents do not all have to have the same structure within the same file
+  - Document structures can be complex and nested
+
+- Disadvantages of JSON
+  - It is more verbose than the equivalent data in csv format
+  - Can be more difficult to process and display than csv formatted data
+
+JavaScript Object Notation (JSON)
+========================================================
+
+```{r}
+
+library(jsonlite)
+
+# wine_json is a JSON
+wine_json <- '{"name":"Chateau Migraine", "year":1997, "alcohol_pct":12.4, "color":"red", "awarded":false}'
+
+# Convert wine_json into a list: wine
+wine <- fromJSON(wine_json)
+
+#wine
+
+# Print structure of wine
+str(wine)
+
+fromJSON(wine_json) %>% as.data.frame
+
+```
+
+JavaScript Object Notation (JSON)
+========================================================
+
+```{r}
+
+library(jsonlite)
+
+
+# Reading stock data 
+stock <- read_json("data/stocks.json",  simplifyVector = TRUE)
+
+# Convert json format to data frame
+stock_df <- stock %>% as_tibble()
+
+
+# Print structure of stock
+glimpse(stock_df)
+
+
+```
+
+INEGI API
+========================================================
+
+API del Banco de Indicadores
+
+<https://www.inegi.org.mx/servicios/api_indicadores.html>
+
+    - Token
+<https://www.inegi.org.mx/app/api/indicadores/interna_v1_1/tokenVerify.aspx>
+
+- Obtener datos de la serie histórica del indicador de Población total, en los Estados Unidos Mexicanos, en idioma español, en formato JSON y calcular su promedio.
+
+INEGI API
+========================================================
+
+```{r}
+
+library(httr)
+library(jsonlite)
+library(rjson)
+
+
+
+#Llamado al API
+url <-"https://www.inegi.org.mx/app/api/indicadores/desarrolladores/jsonxml/INDICATOR/1002000001/es/00000/false/BISE/2.0/[Aquí va tu Token]?type=json"
+
+#Llamado al API con token
+#url <-"https://www.inegi.org.mx/app/api/indicadores/desarrolladores/jsonxml/INDICATOR/1002000001/es/00000/false/BISE/2.0/32df7fee-ab78-485a-828f-9e3370a1ee63?type=json"
+
+respuesta<-GET(url)
+datosGenerales<-content(respuesta,"text")
+flujoDatos<-paste(datosGenerales,collapse = " ")
+
+#Obtención de la lista de observaciones 
+flujoDatos<-fromJSON(flujoDatos)
+flujoDatos<-flujoDatos$Series
+flujoDatos<-flujoDatos[[1]] $OBSERVATIONS
+
+#Generación del promedio de la lista de observaciones 
+datos<-0;
+for (i in 1:length(flujoDatos)){
+
+ datos[i]<-flujoDatos[[i]] $OBS_VALUE
+}
+
+datos<-as.numeric(datos)
+print(mean(datos))
+
+```
+
+InegiR
+========================================================
+
+<https://cran.r-project.org/web/packages/inegiR/index.html>
+
+```{r}
+
+library(inegiR)
+
+token_inegi <- "your-own-token"
+
+#token_inegi <- "32df7fee-ab78-485a-828f-9e3370a1ee63"
+
+gdp <- inegi_series(serie = "381016", token = token_inegi)
+
+tail(gdp)
+
+
+
+```
+
+InegiR
+========================================================
+
+<https://cran.r-project.org/web/packages/inegiR/index.html>
+
+```{r}
+
+series_needed <- c("381016", "444612")
+
+series_names <- c("GDP - old series", "Unemployment rate")
+
+data_for_project <- inegi_series_multiple(series_id = series_needed, 
+                                          token = token_inegi, 
+                                          names = series_names)
+
+head(data_for_project)
+
+```
+
+Using R to access the World Bank API
+========================================================
+
+Developer Information
+
+<https://datahelpdesk.worldbank.org/knowledgebase/topics/125589>
+
+wbstats
+
+<https://cran.r-project.org/web/packages/wbstats/>
+
+```{r}
+
+
+#remotes::install_github("nset-ornl/wbstats")
+
+library(wbstats)
+
+unemploy_inds<- wb_search("unemployment")
+
+head(unemploy_inds)
+
+# 'poverty' OR 'unemployment' OR 'employment'
+povemply_inds <- wb_search(pattern = "poverty|unemployment|employment")
+
+head(povemply_inds)
+
+
+#gdp_data <- wb_data(indicator = "NY.GDP.PCAP.CD", country = "MX",  startdate = 1974, enddate = 2020)
+
+gdp_data <- wb_data(indicator = "NY.GDP.MKTP.KD.ZG", country = "Mexico", start_date = 1974, end_date = 2020)
+
+head(gdp_data)
+
+
+
+# most recent gdp per captia estimates (mrv = most recent value)
+gdp_capita <- wb_data("NY.GDP.PCAP.CD", country = "Mexico", mrv = 1)
+
+head(gdp_capita)
+
+
+# Errors
+example_geos <- c("Mexico", "United States")
+pop_data <- wb_data("SP.POP.TOTL", country = example_geos,
+                    start_date = 2022, end_date = 2022)
+
+pop_data
+
+
+
+# Population, total
+pop_data <- wb_data("SP.POP.TOTL", start_date = 2021, end_date = 2022)
+
+head(pop_data)
+
+```
+
+Using R to access the World Bank API
+========================================================
+
+```{r}
+
+# more_gdp_data <- wb(country = c("MX","CL","US"),
+#                     indicator = "NY.GDP.PCAP.CD",
+#                     startdate = 1974, enddate = 2020)
+
+
+#head(more_gdp_data)
+
+example_geos <- c("Mexico", "United States")
+gdp_data <- wb_data("NY.GDP.PCAP.CD", country = example_geos,
+                    start_date = 2021, end_date = 2021)
+
+gdp_data
+
+```
+
+Using R to access the World Bank API
+========================================================
+
+```{r}
+
+ggplot(gdp_data, aes(x = date, y = NY.GDP.PCAP.CD, color = country, shape = country)) +
+  geom_point()
+
+```
+
+Importing data from statistical software packages
+========================================================
+type: section
+
+
+Import SAS data with haven
+========================================================
+
+```{r}
+
+#library(haven)
+
+# Import sales.sas7bdat: sales
+sales <- read_sas("data/sales.sas7bdat")
+
+# Display the structure of sales
+str(sales)
+
+```
+
+Import STATA data with haven
+========================================================
+
+```{r}
+
+#library(haven)
+
+# Import the STATA data
+sugar <- read_dta("data/trade.dta")
+
+# Structure of sugar
+str(sugar)
+
+```
+
+
+Import SPSS data with haven
+========================================================
+
+```{r}
+
+#library(haven)
+
+# Import person.sav: traits
+traits <- read_sav("data/person.sav")
+
+
+# Structure of sugar
+str(traits)
+
+```
+
+
+Conclusions
+========================================================
+type: section
+
+- Importing data
+  - Several formats and packages
+      - read.csv, read.delim, read.table, read_csv, fread
+  - Excel files
+  - Import flat files from the web
+  - JavaScript Object Notation (JSON)
+  - INEGI API
+  - The World Bank API
+  - Importing data from statistical software packages
+  
+
+Q&A
+========================================================
+
+
+
+
+
