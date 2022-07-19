@@ -1,0 +1,937 @@
+Cleaning_data
+========================================================
+author:Alán Ponce
+date: `r Sys.Date()` 
+autosize: true 
+
+
+<div align="center">
+<img src="imgs/ia_center.jpeg" width=700 height=600>
+</div>
+
+
+```{r, echo = FALSE}
+
+#rm(list=ls())
+
+#-- Load a library
+library(tidyverse)
+library(gapminder)
+library(data.table)
+library(readxl)
+library(gdata)
+library(XLConnect)
+library(haven)
+library(lubridate)
+library(googlesheets4)
+
+```
+
+Agenda
+========================================================
+type: section
+
+- Quick recap
+  - Tidyyverse
+  - Importing data
+- Cleaning data
+- Conclusions
+- Q&A
+
+
+Here’s what messy data look like
+========================================================
+
+
+```{r}
+
+weather <- readRDS("data/weather.rds")
+
+# View the first 6 rows of data
+head(weather)
+
+```
+
+Here’s what messy data look like
+========================================================
+
+
+```{r}
+
+bmi <- read.csv("data/bmi_clean.csv")
+
+# Check the class of bmi
+class(bmi)
+
+# Check the dimensions of bmi
+dim(bmi)
+
+# View the column names of bmi
+names(bmi)
+
+```
+
+
+Here’s what messy data look like
+========================================================
+
+
+```{r}
+
+# Check the structure of bmi
+str(bmi)
+
+```
+
+Here’s what messy data look like
+========================================================
+
+
+```{r}
+
+# Check the structure of bmi, the dplyr way
+glimpse(bmi)
+
+
+```
+
+Here’s what messy data look like
+========================================================
+
+
+```{r}
+
+# View a summary of bmi
+summary(bmi)
+
+
+```
+
+Visualizing your data
+========================================================
+
+
+```{r}
+
+# Histogram of BMIs from 2008
+hist(bmi$Y2008)
+
+```
+
+Visualizing your data
+========================================================
+
+```{r}
+
+
+# Scatter plot comparing BMIs from 1980 to those from 2008
+plot(bmi$Y1980, bmi$Y2008)
+
+```
+
+
+Gathering columns into key-value pairs
+========================================================
+
+```{r}
+
+head(bmi)
+
+```
+
+Gathering columns into key-value pairs
+========================================================
+
+```{r}
+
+
+# Apply gather() to bmi and save the result as bmi_long
+bmi_long <- gather(bmi, 
+                   year, bmi_val, 
+                   -Country)
+
+# View the first 20 rows of the result
+head(bmi_long, 10)
+
+```
+
+
+Spreading key-value pairs into columns
+========================================================
+
+```{r}
+
+
+# Apply spread() to bmi_long
+bmi_wide <- spread(bmi_long, year, bmi_val)
+
+# View the head of bmi_wide
+head(bmi_wide)
+
+```
+
+
+
+Separating columns
+========================================================
+
+```{r}
+
+patient <- rep(c('X','Y'),3)
+
+treatment <- rep(c('A','B'),3)
+
+year_mo <- c(rep(c('2010-10'),2),
+             rep(c('2012-08'),2),
+             rep(c('2014-12'),2)
+             )
+
+response <- c(1,4,2,5,3,6)
+
+treatments <- data.frame(patient, treatment, year_mo, response)
+
+treatments
+
+```
+
+
+
+Separating columns
+========================================================
+
+```{r}
+
+# separate one column into multiple columns
+# the sep argument
+#   any character <> letter or number
+#   or specify a specific separator
+treatments_sep <- separate(treatments, 
+                           col = year_mo, 
+                           into = c("year", "month"))
+                           # sep = "/"
+treatments_sep
+
+```
+
+Uniting columns
+========================================================
+
+```{r}
+
+treatments_uni <- unite(treatments_sep, 
+                                      year_mo, 
+                                      year, month)
+
+treatments_uni
+
+```
+
+
+Uniting columns
+========================================================
+
+```{r}
+
+bmi_cc_clean <- read.csv("data/bmi_cc_clean.csv")
+
+head(bmi_cc_clean)
+
+
+```
+
+
+Uniting columns
+========================================================
+
+```{r}
+
+# Apply unite() to bmi_cc_clean
+bmi_cc <- unite(bmi_cc_clean, 
+                            Country_ISO, 
+                            Country, ISO, sep = "-")
+
+# View the head of the result
+head(bmi_cc)
+
+
+```
+
+
+Separating columns
+========================================================
+
+```{r, warning=FALSE}
+
+# Apply separate() to bmi_cc
+bmi_cc_clean2 <- separate(bmi_cc, col = Country_ISO, into = c("Country", "ISO"), sep = "-")
+
+# View the head of the result
+head(bmi_cc_clean2)
+
+```
+
+
+
+Column headers are values, not variable names
+========================================================
+
+```{r, warning=FALSE}
+
+census <- read.csv("data/census-retail.csv")
+
+# View the head of census
+head(census)
+
+```
+
+
+Column headers are values, not variable names
+========================================================
+
+```{r, warning=FALSE}
+
+# Gather the month columns
+census2 <- gather(census, month, amount, -YEAR)
+
+# Arrange rows by YEAR using dplyr's arrange
+census2 <- arrange(census2, YEAR)
+
+# View first 20 rows of census2
+head(census2, 20)
+
+```
+
+
+Common type conversions
+========================================================
+
+- source <http://archive.ics.uci.edu/ml/datasets/Student+Performance>
+
+```{r, warning=FALSE}
+
+students <- read.csv("data/students.csv")
+
+#head(students)
+
+# Preview students with str()
+str(students)
+
+```
+
+
+Common type conversions
+========================================================
+
+```{r, warning=FALSE}
+
+#7 Medu - mother's education (numeric: 0 - none, 1 - primary education (4th grade), 2 â€“ 5th to 9th grade, 3 â€“ secondary education or 4 â€“ higher education)
+
+
+# Coerce Medu to factor
+students$Medu <- as.factor(students$Medu)
+
+# Preview students with str()
+str(students)
+
+```
+
+Common type conversions
+========================================================
+
+```{r, warning=FALSE}
+
+
+#8 Fedu - father's education (numeric: 0 - none, 1 - primary education (4th grade), 2 â€“ 5th to 9th grade, 3 â€“ secondary education or 4 â€“ higher education)
+
+# Coerce Fedu to factor
+students$Fedu <- as.factor(students$Fedu)
+
+# Preview students with str()
+str(students)
+
+# https://www.r-bloggers.com/2020/02/a-guide-to-encoding-categorical-features-using-r/
+
+```
+
+Working with dates
+========================================================
+
+```{r, warning=FALSE}
+
+students2 <- read.csv("data/students_with_dates.csv")
+
+# Preview students2 with str()
+str(students2)
+
+```
+
+
+
+Working with dates
+========================================================
+
+```{r, warning=FALSE}
+
+# Load the lubridate package
+#library(lubridate)
+
+# Parse as date
+dmy("17 Sep 2015")
+
+# Parse as date and time (with no seconds!)
+mdy_hm("July 15, 2012 12:56")
+
+```
+
+
+Working with dates
+========================================================
+
+```{r, warning=FALSE}
+
+# Coerce dob to a date (with no time)
+students2$dob <- ymd(students2$dob)
+
+# Coerce nurse_visit to a date and time
+students2$nurse_visit <- ymd_hms(students2$nurse_visit)
+
+# Look at students2 once more with str()
+str(students2)
+
+```
+
+
+Trimming and padding strings
+========================================================
+
+```{r, warning=FALSE}
+
+# Trim all leading and trailing whitespace
+str_trim(c("   Filip ", "Nick  ", " Jonathan"))
+
+
+```
+
+
+Upper and lower case
+========================================================
+
+```{r, warning=FALSE}
+
+states <- c("al", "ak", "az", "ar", "ca", "co", "ct", "de", "fl", "ga", "hi", "id", "il", "in", "ia","ks", "ky", "la", "me", "md", "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv", "nh", "nj",
+ "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc", "sd", "tn", "tx", "ut", "vt",
+ "va", "wa", "wv", "wi", "wy")
+
+# Print state abbreviations
+states
+
+
+```
+
+Upper and lower case
+========================================================
+
+```{r, warning=FALSE}
+
+
+# Make states all uppercase and save result to states_upper
+states_upper <- toupper(states)
+
+states_upper
+
+
+```
+
+
+
+Upper and lower case
+========================================================
+
+```{r, warning=FALSE}
+
+# Make states_upper all lowercase again
+states_lower <- tolower(states_upper)
+
+states_lower
+
+
+```
+
+
+Finding and replacing strings
+========================================================
+
+```{r, warning=FALSE}
+
+# Look at the head of students2
+head(students2)
+
+# Detect all dates of birth (dob) in 1997
+str_detect(students2$dob, "1997")
+
+# Detect all dates of birth (dob) in 1997
+str_detect(students2$dob, "1997")
+
+```
+
+
+Finding and replacing strings
+========================================================
+
+```{r, warning=FALSE}
+
+# In the sex column, replace "F" with "Female"...
+students2$sex <- str_replace(students2$sex, "F", "Female")
+
+# ...And "M" with "Male"
+students2$sex <- str_replace(students2$sex, "M", "Male")
+
+head(students2)
+
+```
+
+Finding missing values
+========================================================
+
+```{r, warning=FALSE}
+
+social_df <- data.frame(name = c("Sarah", "Tom", "David", "Alice"),
+                        n_friends = c(244, NA, 145, 43),
+                        status = c("Going out!",  NA, "Movie night...", NA))
+
+social_df
+
+# Call is.na() on the full social_df to spot all NAs
+is.na(social_df)
+
+# Use the any() function to ask whether there are any NAs in the data
+any(is.na(social_df))
+
+# View a summary() of the dataset
+summary(social_df)
+
+# Call table() on the status column
+table(social_df$status)
+
+```
+
+
+Dealing with missing values
+========================================================
+
+```{r, warning=FALSE}
+
+# Replace all empty strings in status with NA
+social_df$status[social_df$status == ""] <- NA
+
+# Print social_df to the console
+social_df
+
+# Use complete.cases() to see which rows have no missing values
+complete.cases(social_df)
+
+# Use na.omit() to remove all rows with any missing values
+na.omit(social_df)
+
+```
+
+Putting it all together
+========================================================
+
+```{r, warning=FALSE}
+
+weather <- readRDS("data/weather.rds")
+
+# Verify that weather is a data.frame
+class(weather)
+
+# Check the dimensions
+dim(weather)
+
+# View the column names
+names(weather)
+
+```
+
+Column names are values
+========================================================
+
+```{r, warning=FALSE}
+
+# Gather the columns
+weather2 <- gather(weather, day, value, X1:X31, na.rm = TRUE)
+
+# View the head
+head(weather2)
+
+```
+
+Values are variable names
+========================================================
+
+```{r, warning=FALSE}
+
+# First remove column "X" of row names
+weather2 <- weather2[, -1]
+head(weather2)
+
+# Spread the data
+weather3 <- spread(weather2, measure, value)
+
+# View the head
+head(weather3)
+```
+
+Clean up dates
+========================================================
+
+```{r, warning=FALSE}
+
+# Remove X's from day column
+weather3$day <- str_replace(weather3$day, "X", "")
+
+# Unite the year, month, and day columns
+weather4 <- unite(weather3, date, year, month, day, sep = "-")
+
+# Convert date column to proper date format using lubridates's ymd()
+weather4$date <- ymd(weather4$date)
+
+# Rearrange columns using dplyr's select()
+weather5 <- select(weather4, date, Events, CloudCover:WindDirDegrees)
+
+# View the head of weather5
+head(weather5)
+
+
+```
+
+A closer look at column types
+========================================================
+
+```{r, warning=FALSE}
+
+
+# Examine the data structure
+glimpse(weather5)
+
+# See what happens if we try to convert PrecipitationIn to numeric
+as.numeric(weather5$PrecipitationIn)
+
+
+```
+
+Column type conversions
+========================================================
+
+```{r, warning=FALSE}
+
+# View(weather5)
+
+weather5$PrecipitationIn <- str_replace(weather5$PrecipitationIn, "T", "NA")
+
+# Convert characters to numerics
+weather6 <- mutate_each(weather5, funs(as.numeric), CloudCover:WindDirDegrees)
+
+# Examine the data structure
+glimpse(weather6)
+
+```
+
+Find missing values
+========================================================
+
+```{r, warning=FALSE}
+
+# Count missing values
+sum(is.na(weather6))
+
+# Find missing values
+summary(weather6)
+
+```
+
+
+Finishing touches
+========================================================
+
+```{r, warning=FALSE}
+
+new_colnames <- (c("date", "events", "cloud_cover",  "max_dew_point_f",           
+                     "max_gust_speed_mph",         "max_humidity",              
+                     "max_sea_level_pressure_in",  "max_temperature_f",         
+                     "max_visibility_miles",       "max_wind_speed_mph",        
+                     "mean_humidity",              "mean_sea_level_pressure_in",
+                     "mean_temperature_f",         "mean_visibility_miles",     
+                     "mean_wind_speed_mph",        "mean_dew_point_f",          
+                     "min_dew_point_f",            "min_humidity",              
+                     "min_sea_level_pressure_in",  "min_temperature_f",         
+                     "min_visibility_miles",       "precipitation_in",          
+                     "wind_dir_degrees"))
+
+# Clean up column names
+names(weather6) <- new_colnames
+
+# Replace empty cells in events column
+weather6$events[weather6$events == ""] <- "None"
+
+# Print the first 6 rows of weather6
+head(weather6)
+
+```
+
+
+Women's Football World Cup 2019 Data
+========================================================
+
+- Importing data part 1
+
+- <https://www.fifa.com/tournaments/womens/womensworldcup/france2019>
+
+```{r, warning=FALSE}
+
+# Read in the data from the datasets folder
+wwc_raw <- read_csv("data/2019_WWCFIFA_summary.csv")
+
+# Check the dimensions and structure of the data
+glimpse(wwc_raw)
+
+```
+
+
+Women's Football World Cup 2019 Data
+========================================================
+
+```{r, warning=FALSE}
+
+# Check the dimensions and structure of the data
+summary(wwc_raw)
+
+```
+
+Women's Football World Cup 2019 Data
+========================================================
+
+- Importing data part 2
+
+Looking at the outputs, we notice a few things about the data. First, we have some NAs to address. Second, most of the columns are of type character. 
+
+```{r, warning=FALSE}
+
+# Read in the data
+wwc_raw <- read_csv("data/2019_WWCFIFA_summary.csv",
+                  col_types = cols(
+                                  Round = col_factor(),
+                                  Date = col_date(format = "%m/%d/%y"),
+                                  Venue = col_factor()
+                                  )
+                 )
+            
+# Call summary() and glimpse()
+glimpse(wwc_raw)
+
+```
+
+Women's Football World Cup 2019 Data
+========================================================
+
+- Importing data part 2
+
+Looking at the outputs, we notice a few things about the data. First, we have some NAs to address. Second, most of the columns are of type character. 
+
+```{r, warning=FALSE}
+
+
+summary(wwc_raw)
+
+
+```
+
+Women's Football World Cup 2019 Data
+========================================================
+
+- Removing rows of NA
+
+We have 55 observations (rows) of 13 variables (columns). Hmmm, we know there were 52 games - why the extra rows? Also Round and Attendance each have three NA, and Date and Venue each have four NA. It looks like we have a few things to fix.
+
+- Rows of NA
+- Missing data values
+- Multiple values in one column (look at Score and PKS)
+- Column headers are a mix of upper- and lowercase letters
+
+The last issue is more of a preference. Having all the column names in the same case will make typing easier
+
+```{r, warning=FALSE}
+
+
+# Remove rows of NA
+wwc_1  <- wwc_raw  %>% 
+             rename_all(tolower)  %>% 
+             filter(!is.na(round))
+
+# Get the dimensions and inspect the first 10 and last 10 rows
+
+head(wwc_1, 10)
+
+
+
+```
+
+Women's Football World Cup 2019 Data
+========================================================
+
+- Replacing NA
+
+We now have 52 rows. Each row corresponds to a match in the tournament. But, it looks like there are a couple NA still lurking about in date and venue. Using colSums() and is.na() we can check to see how many NA are in each column.
+
+
+```{r, warning=FALSE}
+
+# Housekeeping
+wwc_2 <- wwc_1
+
+# Find and replace NA in column date
+index_date <- which(is.na(wwc_2$date))
+
+wwc_2[index_date, ]
+
+wwc_2$date[index_date] <- "2019-06-09"
+
+#wwc_2[index_date, ]
+
+```
+
+Women's Football World Cup 2019 Data
+========================================================
+
+- Replacing NA
+
+We now have 52 rows. Each row corresponds to a match in the tournament. But, it looks like there are a couple NA still lurking about in date and venue. Using colSums() and is.na() we can check to see how many NA are in each column.
+
+
+```{r, warning=FALSE}
+
+
+# Find and replace NA in column venue
+index_venue <- which(is.na(wwc_2$venue))
+
+wwc_2[index_venue, ]
+
+wwc_2$venue[index_venue] <- "Groupama Stadium"
+
+#wwc_2[index_venue, ]
+
+```
+
+Women's Football World Cup 2019 Data
+========================================================
+
+- separate() and replace_na()
+
+The data are looking good, but it is a good idea to get the two data points in score and two data points in pks into their own columns for future data sleuthing.
+
+For this task we're going to employ the functionality of separate(), mutate(), and replace_na(). 
+
+```{r, warning=FALSE}
+
+
+# Separate columns and replace NA
+wwc_3  <- wwc_2  %>% 
+  separate(score, c("home_score", "away_score"), sep =  "-", convert = TRUE)  %>% 
+  separate(pks, c("home_pks", "away_pks"), sep = "-", convert = TRUE)  %>% 
+  mutate(home_pks = replace_na(home_pks, 0),
+         away_pks = replace_na(away_pks, 0))
+
+# Print the data
+wwc_3
+
+```
+
+Women's Football World Cup 2019 Data
+========================================================
+
+- Plotting for outliers
+
+We corrected the NA in the date and venue columns, and separated the score and pks columns to have one score per column.
+
+Let's plot the data to see if there are any outliers.
+
+```{r}
+
+# Housekeeping for plot size
+options(repr.plot.width=8, repr.plot.height=6)
+
+# Load package
+library(ggplot2)
+
+# Make a boxplot of attendance by venue and add the point data
+ggplot(wwc_3, aes(venue, attendance)) +
+  geom_boxplot() +
+  geom_jitter(color = "red", size = 0.5) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+Women's Football World Cup 2019 Data
+========================================================
+
+- What to do with the outlier?
+
+What’s up with the attendance for Groupama Stadium? One data point is almost 600,000 (6e+05) while all the other data points are less than 100,000. 
+
+There is a mistakenly added an extra 0 in the attendance variable
+
+
+```{r}
+
+# Print the number of games played at each venue, and the min and max attendance at each venue
+wwc_3  %>% 
+  group_by(venue)  %>% 
+  summarize(nb_of_games = n(), 
+           min_attendance = min(attendance), 
+           max_attendance = max(attendance))
+
+
+
+```
+
+
+Women's Football World Cup 2019 Data
+========================================================
+
+
+```{r, warning=FALSE}
+
+# Correct the outlier
+wwc_4  <- wwc_3  %>% 
+  mutate(attendance = replace(attendance, which(attendance == 579000), 57900))
+
+# Print the number of games played at each venue, and the min and max attendance at each venue
+wwc_4  %>% 
+  group_by(venue)  %>% 
+  summarize(nb_of_games = n(), 
+           min_attendance = min(attendance), 
+           max_attendance = max(attendance))
+
+
+```
+
+
+Women's Football World Cup 2019 Data
+========================================================
+
+- Questions:
+
+  - Which match had the highest attendance during the tournament?
+
+  - In what stadium was the match with the highest attendance played?
+
+```{r, warning=FALSE}
+
+
+wwc_4 %>% 
+  select(round, attendance, venue) %>% 
+  arrange(desc(attendance))
+
+
+```
+
