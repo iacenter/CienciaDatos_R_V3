@@ -1,0 +1,454 @@
+---
+title: "Data Exploratory"
+author: Alan Ponce
+output:
+  slidy_presentation:
+    css: style.css
+logo : ia_center.jpeg
+background-image: ia_center.jpeg
+biglogo : ia_center.jpeg
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r, echo = FALSE, message=FALSE}
+
+#rm(list=ls())
+
+#-- Load a library
+library(tidyverse)
+library(gapminder)
+library(data.table)
+library(readxl)
+library(gdata)
+library(XLConnect)
+library(haven)
+library(lubridate)
+library(googlesheets4)
+
+```
+
+
+## Exploring Categorical Data
+
+```{r echo = TRUE, message=FALSE}
+
+# Print the first rows of the data
+comics <- read_csv("data/comics.csv")
+
+View(comics)
+
+```
+
+## Exploring Categorical Data
+
+```{r echo=TRUE}
+
+glimpse(comics)
+
+```
+
+
+## Exploring Categorical Data
+
+```{r echo=TRUE}
+
+# Create a 2-way contingency table
+table(comics$align, comics$gender)
+
+
+```
+
+## Dropping levels
+
+```{r echo=TRUE}
+
+# Remove align level
+comics_filtered <- comics %>%
+  filter(align != "Reformed Criminals") %>%
+  droplevels()
+
+# See the result
+comics_filtered %>% 
+  count(align)
+
+
+```
+
+## Side-by-side barcharts
+
+```{r echo=TRUE}
+
+# Create plot of align
+ggplot(comics_filtered, aes(x = align)) + 
+  geom_bar()
+
+```
+
+## Side-by-side barcharts
+
+```{r echo=TRUE}
+
+# Create side-by-side barchart of gender by alignment
+ggplot(comics_filtered, aes(x = align, fill = gender)) + 
+  geom_bar(position = "dodge")
+
+```
+
+## Counts vs. proportions 
+
+```{r echo=TRUE}
+
+# Plot of gender by align
+ggplot(comics_filtered, aes(x = align, fill = gender)) +
+  geom_bar(position = "fill") +
+  ylab("proportion")
+
+```
+
+## Exploring Numerical Data
+
+```{r echo=TRUE}
+
+cars <- read_csv("data/cars04.csv")
+
+```
+
+## Exploring Numerical Data
+
+```{r echo=TRUE}
+
+# Create a histogram
+ggplot(cars, aes(x = city_mpg)) +
+  geom_histogram() 
+
+cars %>% 
+  count(ncyl, sort = TRUE) %>% 
+  arrange(ncyl)
+  #arrange(desc(ncyl))
+
+```
+
+## Exploring Numerical Data
+
+```{r echo=TRUE}
+
+# Filter cars with 4, 6, 8 cylinders
+common_cyl <- filter(cars, ncyl %in% c(4, 6, 8))
+
+# Create overlaid density plots for same data
+ggplot(common_cyl, aes(x = city_mpg, fill = as.factor(ncyl))) +
+  geom_density(alpha = .3)
+
+```
+
+
+## Exploring data
+
+```{r echo=TRUE}
+
+# Load the data
+responses <- read_csv('data/kagglesurvey.csv')
+
+# Print the first 10 rows
+head(responses, n = 10)
+
+```
+
+## Using multiple tools
+
+```{r echo=TRUE}
+
+# Printing the first respondent's tools and languages
+responses[1, 2]
+
+# Add a new column, and unnest the new column
+tools <- responses  %>% 
+    mutate(work_tools = str_split(WorkToolsSelect, ","))  %>% 
+    unnest(work_tools)
+
+# View the first 6 rows of tools
+head(tools)
+
+
+
+```
+
+## Counting users of each tool
+
+```{r echo=TRUE}
+
+# Group the data by work_tools, summarise the counts, and arrange in descending order
+tool_count <- tools  %>% 
+    group_by(work_tools)  %>% 
+    summarise(count = n())  %>% 
+    arrange(desc(count))
+
+# Print the first 6 results
+head(tool_count)
+
+```
+
+## Plotting the most popular tools
+```{r echo=TRUE}
+
+# Create a bar chart of the work_tools column, most counts on the far right
+ggplot(tool_count, 
+       aes(x = fct_reorder(work_tools, -count), y = count)) + 
+    geom_bar(stat = "identity") +
+    theme(axis.text.x  = element_text(angle=90, vjust=0.5, hjust= 1))
+
+```
+
+## The R vs Python debate
+
+```{r echo=TRUE}
+
+# Create a new column called language preference
+debate_tools <- responses  %>% 
+    mutate(language_preference = case_when(
+        str_detect(WorkToolsSelect, "R") & ! str_detect(WorkToolsSelect, "Python") ~ "R",
+        str_detect(WorkToolsSelect, "Python") & ! str_detect(WorkToolsSelect, "R") ~ "Python",
+        str_detect(WorkToolsSelect, "R") & str_detect(WorkToolsSelect, "Python")   ~ "both",
+        TRUE ~ "neither"
+    ))
+
+
+# Print the first 6 rows
+head(debate_tools)
+
+```
+
+## Plotting R vs Python users
+
+```{r echo=TRUE}
+
+# Group by language preference, calculate number of responses, and remove "neither"
+debate_plot <- debate_tools %>% 
+    group_by(language_preference)  %>%
+    summarise(count = n())  %>% 
+    filter(!language_preference == "neither")
+
+# Creating a bar chart
+ggplot(debate_plot, aes(x = language_preference, y = count)) + 
+  geom_bar(stat = "identity")
+
+```
+
+##  Language recommendations
+
+```{r echo=TRUE}
+
+# Group by, summarise, arrange, mutate, and filter
+recommendations <- debate_tools  %>% 
+    group_by(language_preference, LanguageRecommendationSelect)  %>%
+    summarise(count = n())  %>% 
+    arrange(language_preference, desc(count))  %>% 
+    mutate(row = row_number()) %>% 
+    filter(row <= 4)
+
+```
+
+## The most recommended language by the language used
+
+```{r echo=TRUE}
+
+# Create a faceted bar plot
+ggplot(recommendations, aes(x = LanguageRecommendationSelect, y = count)) +
+    geom_bar(stat = "identity") + 
+    facet_wrap(~language_preference)
+
+```
+
+## United Nations life expectancy data
+
+```{r echo=TRUE}
+
+# Loading data
+life_expectancy <- read.csv("data/UNdata.csv")
+
+# Taking a look at the first few rows
+head(life_expectancy)
+
+```
+
+## Life expectancy of men vs. women by country
+
+```{r echo=TRUE}
+
+# Subsetting and reshaping the life expectancy data
+subdata <- life_expectancy  %>% 
+  filter(Year=="2000-2005") %>% 
+  select(Country.or.Area, Subgroup, Value) %>% 
+  spread(Subgroup, Value)
+
+# Taking a look at the first few rows
+head(subdata)
+
+View(subdata)
+
+```
+
+## Visualize I
+
+```{r echo=TRUE}
+
+# Plotting male and female life expectancy
+ggplot(subdata, aes(x=Male, y=Female)) +
+  geom_point()
+
+```
+
+## Reference lines I
+
+```{r echo=TRUE}
+
+# Adding an abline and changing the scale of axes of the previous plots
+ggplot(subdata, aes(x=Male, y=Female)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype=2) +
+  scale_x_continuous(limits=c(35,85)) +
+  scale_y_continuous(limits=c(35,85))
+
+
+```
+
+## Plot titles and axis labels
+
+```{r echo=TRUE}
+
+# Adding labels to previous plot
+ggplot(subdata, aes(x=Male, y=Female))+
+  geom_point(colour="white", fill="chartreuse3", shape=21, alpha=.55, size=5)+
+  geom_abline(intercept = 0, slope = 1, linetype=2)+
+  scale_x_continuous(limits=c(35,85))+
+  scale_y_continuous(limits=c(35,85))+
+  labs(title="Life Expectancy at Birth by Country",
+       subtitle="Years. Period: 2000-2005. Average.",
+       caption="Source: United Nations Statistics Division",
+       x="Males",
+       y="Females")
+
+```
+
+## Highlighting remarkable countries I
+
+```{r echo=TRUE}
+
+# Subseting data to obtain countries of interest
+top_male <- subdata %>% arrange(Male-Female) %>% head(3)
+top_female <- subdata %>% arrange(Female-Male) %>% head(3)
+
+# Adding text to the previous plot to label countries of interest 
+ggplot(subdata, aes(x=Male, y=Female, label=Country.or.Area))+
+  geom_point(colour="white", fill="chartreuse3", shape=21, alpha=.55, size=5)+
+  geom_abline(intercept = 0, slope = 1, linetype=2)+
+  scale_x_continuous(limits=c(35,85))+
+  scale_y_continuous(limits=c(35,85))+
+  labs(title="Life Expectancy at Birth by Country",
+       subtitle="Years. Period: 2000-2005. Average.",
+       caption="Source: United Nations Statistics Division",
+       x="Males",
+       y="Females")+
+  geom_text(data=top_male, size=3)+
+  geom_text(data=top_female, size=3)+
+theme_bw()
+
+
+```
+
+## How has life expectancy by gender evolved?
+
+```{r echo=TRUE}
+
+# Subsetting, mutating and reshaping the life expectancy data
+subdata2 <- life_expectancy %>% 
+  filter(Year %in% c("1985-1990", "2000-2005")) %>% 
+  mutate(Sub_Year=paste(Subgroup, Year, sep="_")) %>% 
+  mutate(Sub_Year=gsub("-", "_", Sub_Year)) %>% 
+  select(-Subgroup, -Year) %>% 
+  spread(Sub_Year, Value) %>% 
+  mutate(diff_Female = Female_2000_2005 - Female_1985_1990, 
+         diff_Male   = Male_2000_2005 - Male_1985_1990)
+
+# Taking a look at the first few rows
+head(subdata2)
+
+```
+
+## Visualize II
+
+```{r echo=TRUE}
+
+# Doing a nice first version of the plot with abline, scaling axis and adding labels
+ggplot(subdata2, 
+       aes(x=diff_Male, y=diff_Female, label=Country.or.Area))+
+  geom_point(colour="white", fill="chartreuse3", shape=21, alpha=.55, size=5)+
+  geom_abline(intercept = 0, slope = 1, linetype=2)+
+  scale_x_continuous(limits=c(-25,25))+
+  scale_y_continuous(limits=c(-25,25))+
+  labs(title="Life Expectancy at Birth by Country in Years",
+       subtitle="Difference between 1985-1990 and 2000-2005. Average.",
+       caption="Source: United Nations Statistics Division",
+       x="Males",
+       y="Females")+
+theme_bw()
+
+```
+
+## Reference lines II
+
+```{r echo=TRUE}
+
+# Adding an hline and vline to previous plots
+ggplot(subdata2, 
+       aes(x=diff_Male, y=diff_Female, label=Country.or.Area))+
+  geom_point(colour="white", fill="chartreuse3", shape=21, alpha=.55, size=5)+
+  geom_abline(intercept = 0, slope = 1, linetype=2)+
+  scale_x_continuous(limits=c(-25,25))+
+  scale_y_continuous(limits=c(-25,25))+
+  geom_hline(yintercept=0, linetype=2)+
+  geom_vline(xintercept=0, linetype=2)+
+  labs(title="Life Expectancy at Birth by Country",
+       subtitle="Years. Difference between 1985-1990 and 2000-2005. Average.",
+       caption="Source: United Nations Statistics Division",
+       x="Males",
+       y="Females")+
+theme_bw()
+
+```
+
+## Highlighting remarkable countries II
+
+```{r echo=TRUE}
+
+# Subseting data to obtain countries of interest
+top <- subdata2 %>% arrange(diff_Male+diff_Female) %>% head(3)
+bottom <- subdata2 %>% arrange(-(diff_Male+diff_Female)) %>% head(3)
+
+# Adding text to the previous plot to label countries of interest
+ggplot(subdata2, 
+       aes(x=diff_Male, y=diff_Female, label=Country.or.Area), guide=FALSE)+
+  geom_point(colour="white", fill="chartreuse3", shape=21, alpha=.55, size=5)+
+  geom_abline(intercept = 0, slope = 1, linetype=2)+
+  scale_x_continuous(limits=c(-25,25))+
+  scale_y_continuous(limits=c(-25,25))+
+  geom_hline(yintercept=0, linetype=2)+
+  geom_vline(xintercept=0, linetype=2)+
+  labs(title="Life Expectancy at Birth by Country",
+       subtitle="Years. Difference between 1985-1990 and 2000-2005. Average.",
+       caption="Source: United Nations Statistics Division",
+       x="Males",
+       y="Females")+
+  geom_text(data=top, size=3)+
+  geom_text(data=bottom, size=3)+
+  theme_bw()
+
+```
+
+
